@@ -104,6 +104,22 @@ app.put('/envelopes/:category', (req, res, next) => {
     }
 })
 
+app.post('/envelopes/:category1/:category2', (req, res, next) => {
+    const category1 = getEnvelopeByCategory(req.params.category1, envelopes)
+    const category2 = getEnvelopeByCategory(req.params.category2, envelopes)
+
+    const transfer = req.body.transfer
+
+    if (category1 === -1 || category2 === -1) {
+        res.status(404).json({ error: 'One or both of the envelope categories do not exist.' })
+    } else {
+        envelopes[category1].budget -= transfer
+        envelopes[category2].budget += transfer
+
+        res.status(200).json({success: `Transfered ${transfer} from ${envelopes[category1].category} to ${envelopes[category2].category}`})
+    }
+})
+
 app.delete('/envelopes/:category', (req, res, next) => {
     const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
 
