@@ -99,11 +99,20 @@ app.put('/envelopes/:category', (req, res, next) => {
                 res.status(200).json(envelopes[envelopeCategory])
             }
         }
+    } else {
+        res.status(404).json({ error: 'The envelope category does not exist.' })
     }
 })
 
 app.delete('/envelopes/:category', (req, res, next) => {
-    
+    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
+
+    if (envelopeCategory === -1) {
+        res.status(404).json({ error: 'The envelope category does not exist.' })
+    } else {
+        envelopes.splice(envelopeCategory, 1)
+        res.sendStatus(204)
+    }
 })
 
 const port = 3000
