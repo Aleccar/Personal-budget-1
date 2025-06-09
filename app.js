@@ -1,8 +1,14 @@
-const express = require ('express')
+const express = require('express')
 
 // Instantiate Express
 const app = express()
 
+app.use(express.json())
+
+app.use((req, res, next) => {
+    console.log(req.method, req.hostname, req.path)
+    next()
+})
 
 let id = 1
 
@@ -12,9 +18,15 @@ let envelopes = []
 
 const getIndexById = (id, elementList) => {
     return elementList.findIndex((element) => {
-        return element.id === id
+        return element.id === Number(id)
     });
 };
+
+const getEnvelopeByCategory = (category, elementList) => {
+    return elementList.findIndex((element) => {
+        return element.category === category
+    })
+}
 
 const envelopeFormat = {
     category: 'Groceries',
@@ -27,30 +39,39 @@ app.get('/envelopes', (req, res, next) => {
     res.json(envelopes)
 })
 
+app.get('/envelopes/:category', (req, res, next) => {
+    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
+
+    if (envelopeCategory !== -1) {
+        res.status(200).json(envelopes[envelopeCategory])
+    } else {
+        res.status(404).json({ error: 'The envelope category does not exist.' })
+    }
+})
+
 app.get('/envelopes/:id', (req, res, next) => {
     const envelopeId = getIndexById(req.params.id, envelopes)
 
     if (envelopeId !== -1) {
         res.status(200).json(envelopes[envelopeId])
     } else {
-        res.status(404).json({error: 'The envelope ID does not exist.'})
+        res.status(404).json({ error: 'The envelope ID does not exist.' })
     }
 })
 
 app.post('/envelopes', (req, res, next) => {
-    const newEnvelopeCategory = req.category
-    const newEnvelopeBudget = req.budget
-
+    const newEnvelopeCategory = req.body.category
+    const newEnvelopeBudget = req.body.budget
 
     if (!newEnvelopeCategory || !newEnvelopeBudget) {
-        res.status(400).json({error: 'You need to add a category and budget to the envelope.'})
+        res.status(400).json({ error: 'You need to add a category and budget to the envelope.' })
     } else {
         const newEnvelope = {
             category: newEnvelopeCategory,
-            budget: newEnvelopeBudget,
+            budget: Number(newEnvelopeBudget),
             id: id++
         }
-        
+
         envelopes.push(newEnvelope)
         res.status(201).json(newEnvelope)
     }
