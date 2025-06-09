@@ -75,10 +75,36 @@ app.post('/envelopes', (req, res, next) => {
         envelopes.push(newEnvelope)
         res.status(201).json(newEnvelope)
     }
-
 })
 
+app.put('/envelopes/:category', (req, res, next) => {
+    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
+    const updatedCategory = req.body.category
+    const updatedBudget = req.body.budget
 
+    if (envelopeCategory !== -1) {
+        if (!updatedBudget && !updatedCategory) {
+            res.status(400).json({ error: 'You need to add text to update the envelope budget or category.'})
+        } else {
+            if (updatedCategory && updatedBudget) {
+                envelopes[envelopeCategory].category = updatedCategory
+                envelopes[envelopeCategory].budget = updatedBudget
+                res.status(200).json(envelopes[envelopeCategory])
+            } 
+            else if (updatedBudget) {
+                envelopes[envelopeCategory].budget = updatedBudget
+                res.status(200).json(envelopes[envelopeCategory])
+            } else {
+                envelopes[envelopeCategory].category = updatedCategory
+                res.status(200).json(envelopes[envelopeCategory])
+            }
+        }
+    }
+})
+
+app.delete('/envelopes/:category', (req, res, next) => {
+    
+})
 
 const port = 3000
 app.listen(port, () => {
