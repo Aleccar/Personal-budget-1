@@ -12,34 +12,9 @@ app.use((req, res, next) => {
     next()
 })
 
-let id = 1
-
-let totalBudget = 500
-
-let envelopes = []
-
-const getIndexById = (id, elementList) => {
-    return elementList.findIndex((element) => {
-        return element.id === Number(id)
-    });
-};
-
-const getEnvelopeByCategory = (category, elementList) => {
-    return elementList.findIndex((element) => {
-        return element.category === category
-    })
-}
-
-const envelopeFormat = {
-    category: 'Groceries',
-    budget: 100,
-    id: 'insert number here'
-}
-
-
 app.get('/envelopes', async (req, res, next) => {
     try {
-        const results = await db.query('SELECT * FROM envelopes');
+        const results = await db.query('SELECT * FROM envelopes ORDER BY id');
         return res.status(200).json(results.rows);
     } catch (err) {
         console.error(err);
@@ -87,10 +62,16 @@ app.post('/envelopes', async (req, res, next) => {
     }
 })
 
-app.put('/envelopes/:id', async (req, res, next) => {
-    const envelopeId = req.params.id
+app.put('/envelopes/:key/:value', async (req, res, next) => {
+    const { key, value } = req.params
     const updatedCategory = req.body.category
     const updatedBudget = req.body.budget
+
+    console.log(`KEY: ${key}  ... VALUE: ${value}`)
+
+    if (!['id', 'category'].includes(key)) {
+        return res.status(400).json({ error: 'Invalid lookup key.' });
+    }
 
     if (!updatedBudget && !updatedCategory) {
         res.status(400).json({ error: 'You need to add text to update the envelope budget or category.' })
@@ -98,15 +79,15 @@ app.put('/envelopes/:id', async (req, res, next) => {
 
     try {
         if (updatedCategory && updatedBudget) {
-            const results = await db.query(`UPDATE envelopes SET category = $1, budget = $2 WHERE id = ${envelopeId} RETURNING *`, [updatedCategory, updatedBudget])
+            const results = await db.query(`UPDATE envelopes SET category = $1, budget = $2 WHERE ${key} = $3 RETURNING *`, [updatedCategory, updatedBudget, value])
 
             res.status(201).json(results.rows[0])
         } else if (updatedBudget) {
-            const results = await db.query(`UPDATE envelopes SET budget = $1 WHERE id = ${envelopeId} RETURNING *`, [updatedBudget])
+            const results = await db.query(`UPDATE envelopes SET budget = $1 WHERE ${key} = $2 RETURNING *`, [updatedBudget, value])
 
             res.status(201).json(results.rows[0])
         } else {
-            const results = await db.query(`UPDATE envelopes SET category = $1 WHERE id = ${envelopeId} RETURNING *`, [updatedCategory])
+            const results = await db.query(`UPDATE envelopes SET category = $1 WHERE ${key} = $2 RETURNING *`, [updatedCategory, value])
 
             res.status(201).json(results.rows[0])
         }
