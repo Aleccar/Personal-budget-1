@@ -1,4 +1,6 @@
 const express = require('express')
+const db = require('./db');
+require('dotenv').config()
 
 // Instantiate Express
 const app = express()
@@ -35,74 +37,85 @@ const envelopeFormat = {
 }
 
 
-app.get('/envelopes', (req, res, next) => {
-    res.json(envelopes)
-})
-
-app.get('/envelopes/:category', (req, res, next) => {
-    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
-
-    if (envelopeCategory !== -1) {
-        res.status(200).json(envelopes[envelopeCategory])
-    } else {
-        res.status(404).json({ error: 'The envelope category does not exist.' })
+app.get('/envelopes', async (req, res, next) => {
+    try {
+        const results = await db.query('SELECT * FROM envelopes');
+        return res.status(200).json(results.rows);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 })
 
-app.get('/envelopes/:id', (req, res, next) => {
-    const envelopeId = getIndexById(req.params.id, envelopes)
+app.get('/envelopes/:key/:value', async (req, res, next) => {
+    const { key, value } = req.params
 
-    if (envelopeId !== -1) {
-        res.status(200).json(envelopes[envelopeId])
-    } else {
-        res.status(404).json({ error: 'The envelope ID does not exist.' })
+    if (!['id', 'category'].includes(key)) {
+        return res.status(400).json({ error: 'Invalid lookup key.' });
     }
-})
 
-app.post('/envelopes', (req, res, next) => {
-    const newEnvelopeCategory = req.body.category
-    const newEnvelopeBudget = req.body.budget
+    try {
+        const results = await db.query(
+            `SELECT * FROM envelopes WHERE ${key} = $1`,
+            [value]);
 
-    if (!newEnvelopeCategory || !newEnvelopeBudget) {
-        res.status(400).json({ error: 'You need to add a category and budget to the envelope.' })
-    } else {
-        const newEnvelope = {
-            category: newEnvelopeCategory,
-            budget: Number(newEnvelopeBudget),
-            id: id++
+        if (results.rows.length === 0) {
+            return res.status(404).json({ error: `The envelope ${key} does not exist.` });
         }
 
-        envelopes.push(newEnvelope)
-        res.status(201).json(newEnvelope)
+        return res.status(200).json(results.rows[0]);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error.' });
     }
 })
 
-app.put('/envelopes/:category', (req, res, next) => {
-    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
+app.post('/envelopes', async (req, res, next) => {
+    const { category, budget } = req.body
+
+    if (!category || !budget) {
+        res.status(400).json({ error: 'You need to add a category and budget to the envelope.' })
+    }
+
+    try {
+        const results = await db.query(`INSERT INTO envelopes(category, budget) VALUES($1, $2) RETURNING *`, [category, budget])
+
+        return res.status(201).json(results.rows[0])
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error.' })
+    }
+})
+
+app.put('/envelopes/:id', async (req, res, next) => {
+    const envelopeId = req.params.id
     const updatedCategory = req.body.category
     const updatedBudget = req.body.budget
 
-    if (envelopeCategory !== -1) {
-        if (!updatedBudget && !updatedCategory) {
-            res.status(400).json({ error: 'You need to add text to update the envelope budget or category.'})
-        } else {
-            if (updatedCategory && updatedBudget) {
-                envelopes[envelopeCategory].category = updatedCategory
-                envelopes[envelopeCategory].budget = updatedBudget
-                res.status(200).json(envelopes[envelopeCategory])
-            } 
-            else if (updatedBudget) {
-                envelopes[envelopeCategory].budget = updatedBudget
-                res.status(200).json(envelopes[envelopeCategory])
-            } else {
-                envelopes[envelopeCategory].category = updatedCategory
-                res.status(200).json(envelopes[envelopeCategory])
-            }
-        }
-    } else {
-        res.status(404).json({ error: 'The envelope category does not exist.' })
+    if (!updatedBudget && !updatedCategory) {
+        res.status(400).json({ error: 'You need to add text to update the envelope budget or category.' })
     }
-})
+
+    try {
+        if (updatedCategory && updatedBudget) {
+            const results = await db.query(`UPDATE envelopes SET category = $1, budget = $2 WHERE id = ${envelopeId} RETURNING *`, [updatedCategory, updatedBudget])
+
+            res.status(201).json(results.rows[0])
+        } else if (updatedBudget) {
+            const results = await db.query(`UPDATE envelopes SET budget = $1 WHERE id = ${envelopeId} RETURNING *`, [updatedBudget])
+
+            res.status(201).json(results.rows[0])
+        } else {
+            const results = await db.query(`UPDATE envelopes SET category = $1 WHERE id = ${envelopeId} RETURNING *`, [updatedCategory])
+
+            res.status(201).json(results.rows[0])
+        }
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({ error: 'Internal server error.' })
+    }
+}
+)
 
 app.post('/envelopes/:category1/:category2', (req, res, next) => {
     const category1 = getEnvelopeByCategory(req.params.category1, envelopes)
@@ -116,22 +129,32 @@ app.post('/envelopes/:category1/:category2', (req, res, next) => {
         envelopes[category1].budget -= transfer
         envelopes[category2].budget += transfer
 
-        res.status(200).json({success: `Transfered ${transfer} from ${envelopes[category1].category} to ${envelopes[category2].category}`})
+        res.status(200).json({ success: `Transfered ${transfer} from ${envelopes[category1].category} to ${envelopes[category2].category}` })
     }
 })
 
-app.delete('/envelopes/:category', (req, res, next) => {
-    const envelopeCategory = getEnvelopeByCategory(req.params.category, envelopes)
+app.delete('/envelopes/:id', async (req, res, next) => {
+    const envelopeId = req.params.id
 
-    if (envelopeCategory === -1) {
-        res.status(404).json({ error: 'The envelope category does not exist.' })
-    } else {
-        envelopes.splice(envelopeCategory, 1)
+    try {
+        const results = await db.query('DELETE FROM envelopes WHERE id = $1 RETURNING *', [envelopeId])
+
+        if (results.rows.length === 0) {
+            res.status(404).json({ error: 'The envelope ID does not exist.' })
+        }
+
         res.sendStatus(204)
     }
+    catch (err) {
+        console.error(err)
+        return res.status(500).json({ error: 'Internal server error.' })
+    }
 })
 
-const port = 3000
-app.listen(port, () => {
-    console.log(`App listening on port ${port}`)
+
+
+PORT = process.env.PORT || 3000
+
+app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}`)
 })
