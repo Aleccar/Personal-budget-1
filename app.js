@@ -179,7 +179,7 @@ app.get('/transactions/:id', async (req, res) => {
         const results = await db.query('SELECT * FROM transactions WHERE id = $1', [id])
 
         if (results.rows.length === 0) {
-            return res.status(404).json({error: 'No transaction with the specified id exists.'})
+            return res.status(404).json({ error: 'No transaction with the specified id exists.' })
         }
 
     } catch (err) {
@@ -191,9 +191,9 @@ app.get('/transactions/:id', async (req, res) => {
 // CREATE
 app.post('/transactions/:envelope', async (req, res) => {
     const envelope = req.params.envelope
-    const {amount, recipient} = req.body
+    const { amount, recipient } = req.body
 
-        if (!amount || !recipient) {
+    if (!amount || !recipient) {
         return res.status(400).json({ error: 'You need to add a category and budget to the envelope.' })
     }
 
@@ -210,7 +210,7 @@ app.post('/transactions/:envelope', async (req, res) => {
 
         if (result2.rows.length === 0) {
             await db.query('ROLLBACK')
-            return res.status(404).json({error: 'That envelope does not exist.'})
+            return res.status(404).json({ error: 'That envelope does not exist.' })
         }
 
         await db.query('COMMIT')
@@ -225,8 +225,72 @@ app.post('/transactions/:envelope', async (req, res) => {
 })
 
 // UPDATE
+app.put('/transactions/:id', async (req, res) => {
+    const id = req.params.id
+    const { amount, recipient, envelopeId } = req.body
+
+    try {
+        const fields = []
+        const values = []
+        let idx = 1
+
+        if (amount !== undefined) {
+            fields.push(`amount = $${idx++}`)
+            values.push(amount)
+        }
+        if (recipient !== undefined) {
+            fields.push(`recipient = $${idx++}`)
+            values.push(recipient)
+        }
+        if (envelopeId !== undefined) {
+            const idExists = await db.query('SELECT id FROM envelopes WHERE id = $1', [envelopeId])
+            if (idExists.rows.length === 0) {
+                return res.status(404).json({ error: 'No envelope with the provided id exists' })
+            }
+            fields.push(`envelope_id = $${idx++}`)
+            values.push(envelopeId)
+        }
+
+        if (fields.length === 0) {
+            return res.status(400).json({ error: 'No fields provided to update.' })
+        }
+
+        values.push(id)
+
+        const query = `UPDATE transactions SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`
+        const results = await db.query(query, values)
+
+        if (results.rows.length === 0) {
+            return res.status(404).json({ error: 'No transaction with the provided id exists.' })
+        }
+
+        return res.status(201).json(results.rows[0])
+
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({ error: 'Internal server error.' })
+    }
+})
 
 // DELETE
+app.delete('/transactions/:id', async (req, res) => {
+    const id = req.params.id
+
+    try {
+        const results = await db.query('DELETE FROM transactions WHERE id = $1 RETURNING *', [id])
+
+        if (results.rows.length === 0) {
+            return res.status(404).json({ error: 'The transaction ID does not exist.' })
+        }
+
+        return res.sendStatus(204)
+
+
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({ error: 'Internal server error.' })
+    }
+})
 
 
 
