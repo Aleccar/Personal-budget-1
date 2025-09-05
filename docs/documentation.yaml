@@ -1,0 +1,461 @@
+openapi: 3.0.4
+info:
+  title: Simple Budget API v.2 - OpenAPI 3.0
+  version: 2.0.0
+  description: A simple API built to help keep track of finances and spending.
+servers:
+  - url: https://petstore3.swagger.io/api/v3
+paths:
+  /envelopes:
+    summary: Get all envelopes or create a new one.
+    description: >-
+      Retrieve all envelopes in the database or create a completely new
+      envelope.
+    get:
+      summary: Retrieves all envelopes
+      description: Retrieves all available envelopes from the database.
+      operationId: getAllEnvelopes
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "category": "food",
+                            "budget": "100.00",
+                            "date": "2025-08-30T22:00:00.000Z"
+                        },
+                        {
+                            "id": 2,
+                            "category": "Something new",
+                            "budget": "30.00",
+                            "date": "2025-08-31T22:00:00.000Z"
+                        },
+                        {
+                            "id": 6,
+                            "category": "hobbies",
+                            "budget": "40.00",
+                            "date": "2025-08-31T22:00:00.000Z"
+                        },
+                        {
+                            "id": 9,
+                            "category": "games",
+                            "budget": "14.02",
+                            "date": "2025-08-31T22:00:00.000Z"
+                        }
+                    ]
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+    post:
+      summary: Creates new envelope
+      description: Creates a new envelope based on input from user.
+      operationId: createNewEnvelope
+      responses:
+        '201':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "id": 10,
+                        "category": "friends",
+                        "budget": "150.00",
+                        "date": "2025-09-04T22:00:00.000Z"
+                    }
+        '400':
+          description: Bad request
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: >-
+                    { error: 'You need to add a category and budget to the
+                    envelope.' }
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+  /envelopes/{key}/{value}:
+    summary: Gets/ updates envelopes by id or category.
+    description: >-
+      Retrieve or update an envelope from the database based on either the id of
+      the envelope or its category.
+    parameters:
+    - in: path
+      name: key
+      required: true
+      schema:
+        type: string
+        enum:
+          - id
+          - description
+    - in: path
+      name: value
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Retrieves envelope by id or category
+      description: Fetches an envelope from the database by specified id or category.
+      operationId: getSpecificEnvelope
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "id": 1,
+                        "category": "food",
+                        "budget": "100.00",
+                        "date": "2025-08-30T22:00:00.000Z"
+                    }
+        '400':
+          description: Bad request
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''Invalid lookup key.'' }'
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: `The envelope ${key} does not exist.` }'
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+    put:
+      summary: Update envelope by id or category.
+      description: Updates an envelope based on input and specified id or category.
+      operationId: updateEnvelope
+      responses:
+        '201':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "id": 6,
+                        "category": "hobbies",
+                        "budget": "40.00",
+                        "date": "2025-08-31T22:00:00.000Z"
+                    }
+        '400':
+          description: Bad request
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: >-
+                    { error: 'You need to add text to update the envelope budget
+                    or category.' }
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: `The envelope ${key} does not exist.` }'
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+  /envelopes/transfer/{category1}/{category2}:
+    summary: Transfers budget amount from one category to another.
+    description: >-
+      Takes two categories as parameters and transfers the amount specified from
+      one to the other.
+    parameters:
+    - in: path
+      name: category1
+      required: true
+      schema:
+        type: string
+    - in: path
+      name: category2
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Transfers budget amount from one envelope to another.
+      description: >-
+        Removes user specified amount from category one and adds it to category
+        two.
+      operationId: tranferBudgetByCategory
+      responses:
+        '201':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "from": {
+                            "id": 9,
+                            "category": "games",
+                            "budget": "-5.98",
+                            "date": "2025-08-31T22:00:00.000Z"
+                        },
+                        "to": {
+                            "id": 10,
+                            "category": "friends",
+                            "budget": "170.00",
+                            "date": "2025-09-04T22:00:00.000Z"
+                        }
+                    }
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: >-
+                    { error: 'One or both of the envelope categories do not
+                    exist.' }
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+  /envelopes/{id}:
+    summary: Deletes envelope by id
+    description: Removes an envelope from the database based on specified id.
+    parameters:
+    - in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+    delete:
+      summary: Deletes envelope by id.
+      description: Removes an envelope from the database by specified id.
+      operationId: deleteEnvelope
+      responses:
+        '204':
+          description: success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: '{}'
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''The envelope ID does not exist.'' }'
+        default:
+          description: Default error sample response
+      tags:
+        - Envelopes
+  /transactions:
+    summary: Retrieves all transactions
+    description: Get all available transactions from the database.
+    get:
+      summary: Retrieves all transactions.
+      description: Fetches all transactions from the database.
+      operationId: getAllTransactions
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "transaction_date": "2025-09-04T22:02:45.327Z",
+                            "amount": "11.25",
+                            "recipient": "John Doe",
+                            "envelope_id": 9
+                        }
+                    ]
+        default:
+          description: Default error sample response
+      tags:
+        - Transactions
+  /transactions/{id}:
+    summary: Get/ Update/ Delete transaction by id
+    description: >-
+      Retrieves, updates or deletes transactions from the database by the
+      specified id.
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+      
+    get:
+      summary: Get transaction by id
+      description: Fetches a transaction by specified id.
+      operationId: getSpecificTransaction
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "transaction_date": "2025-09-04T22:02:45.327Z",
+                            "amount": "11.25",
+                            "recipient": "John Doe",
+                            "envelope_id": 9
+                        }
+                    ]
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''No transaction with the specified id exists.'' }'
+        default:
+          description: Default error sample response
+      tags:
+        - Transactions
+    put:
+      summary: Updates a transaction
+      description: Updates a transaction based on user input.
+      operationId: updateTransaction
+      responses:
+        '201':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "id": 1,
+                        "transaction_date": "2025-09-04T22:02:45.327Z",
+                        "amount": "11.25",
+                        "recipient": "John Doe",
+                        "envelope_id": 9
+                    }
+        '400':
+          description: Bad request
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''No fields provided to update.'' }'
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''No envelope with the provided id exists'' }'
+        default:
+          description: Default error sample response
+      tags:
+        - Transactions
+    delete:
+      summary: Deletes a transaction.
+      description: Removes a transaction from the database by specified id.
+      operationId: deleteTransaction
+      responses:
+        '204':
+          description: success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: '{}'
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''The transaction ID does not exist.'' }'
+        default:
+          description: Default error sample response
+      tags:
+        - Transactions
+  /transactions/{envelope}:
+    summary: Creates a new transaction tied to envelope category.
+    description: 'Creates a new transaction based on input and specified envelope. '
+    parameters:
+      - in: path
+        name: envelope
+        required: true
+        schema: 
+          type: string
+    post:
+      summary: Create new transaction
+      description: >-
+        Creates a new transaction based on user input, taking money out of the
+        specified envelope in the process.
+      operationId: createNewTransaction
+      responses:
+        '201':
+          description: Success
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                success:
+                  value: |-
+                    {
+                        "id": 5,
+                        "transaction_date": "2025-09-05T11:11:07.963Z",
+                        "amount": "30.00",
+                        "recipient": "Steam",
+                        "envelope_id": 9
+                    }
+        '400':
+          description: Bad request
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: >-
+                    { error: 'You need to add a category and budget to the
+                    envelope.' }
+        '404':
+          description: Not found
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                error:
+                  value: '{ error: ''That envelope does not exist.'' }'
+        default:
+          description: Default error sample response
+      tags:
+        - Transactions
+
+# Components Section
+components:
+  responses:
+    '5xx':
+      description: Server error
+      content:
+        text/plain; charset=utf-8:
+          examples:
+            error:
+              value: '{ error: ''Something went wrong.'' }'
